@@ -35,15 +35,14 @@
     <ClInclude Include="src\graphics\shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\resources\shaders\TextPixelShader.frag">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\resources\shaders\TextVertexShader.vert">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\resources\shaders\cubeShader.frag" />
-    <None Include="src\resources\shaders\cubeShader.vert" />
-    <None Include="src\resources\shaders\defaultShader.frag" />
-    <None Include="src\resources\shaders\screenShader.frag" />
-    <None Include="src\resources\shaders\screenShader.vert" />
-    <None Include="src\resources\shaders\simpleShader.frag" />
-    <None Include="src\resources\shaders\simpleShader.vert" />
     <None Include="src\resources\shaders\ModelShader\ModelShader.frag" />
     <None Include="src\resources\shaders\ModelShader\ModelShader.vert" />
   </ItemGroup>

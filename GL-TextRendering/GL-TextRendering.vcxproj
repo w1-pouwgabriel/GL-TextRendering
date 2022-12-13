@@ -145,17 +145,12 @@
   <ItemGroup>
     <ClInclude Include="src\graphics\camera.h" />
     <ClInclude Include="src\graphics\shader.h" />
+    <ClInclude Include="src\resources\shaders\TextVertexShader.vert" />
+    <ClInclude Include="src\resources\shaders\TextPixelShader.frag" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\resources\shaders\cubeShader.frag" />
-    <None Include="src\resources\shaders\cubeShader.vert" />
-    <None Include="src\resources\shaders\defaultShader.frag" />
     <None Include="src\resources\shaders\ModelShader\ModelShader.frag" />
     <None Include="src\resources\shaders\ModelShader\ModelShader.vert" />
-    <None Include="src\resources\shaders\screenShader.frag" />
-    <None Include="src\resources\shaders\screenShader.vert" />
-    <None Include="src\resources\shaders\simpleShader.frag" />
-    <None Include="src\resources\shaders\simpleShader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
