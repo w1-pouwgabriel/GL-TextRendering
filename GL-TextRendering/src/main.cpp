@@ -9,9 +9,14 @@
 
 #include <iostream>
 #include <map>
+#include <vector>
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#define STB_TRUETYPE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+//Load std
+#include <stb/stb_image_write.h>
+#include <stb/stb_truetype.h>
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -81,72 +86,91 @@ int main()
     ourShader.use();
     glUniformMatrix4fv(glGetUniformLocation(ourShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-    // initialize the freetype library
-    // -------------------------------
-    FT_Library ft;
-    if (FT_Init_FreeType(&ft))
+    // load font and create a bitmap
+    // -----------------------------
+    stbtt_fontinfo font;
+    unsigned char fontBuffer[200];
+
+    FILE* fp;
+    errno_t err;
+    if((err = fopen_s(&fp, "src/resources/fonts/verdana.ttf", "rb")) != 0)
     {
-        std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
-        return -1;
+        std::cout << "Could not open file" << std::endl;
     }
-
-    FT_Face face;
-    if (FT_New_Face(ft, "src/resources/fonts/verdana.ttf", 0, &face))
+    else
     {
-        std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
-        return -1;
-    }
-    else {
-        // set size to load glyphs as
-        FT_Set_Pixel_Sizes(face, 0, 48);
+        // Read the font into a buffer
+        fread(fontBuffer, 1, 128, fp);
+        stbtt_InitFont(&font, fontBuffer, 0);
 
-        // disable byte-alignment restriction
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        // Get a font size
+        float scale = stbtt_ScaleForPixelHeight(&font, 48 * 2);
 
-        // load first 128 characters of ASCII set
-        for (unsigned char c = 0; c < 128; c++)
+        int ascent, descent;
+        stbtt_GetFontVMetrics(&font, &ascent, &descent, 0);
+        int baseline = (int)(ascent * scale);
+
+
+        int width = 0;
+        for (const auto& character : fontBuffer)
         {
-            // Load character glyph 
-            if (FT_Load_Char(face, c, FT_LOAD_RENDER))
-            {
-                std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
-                continue;
-            }
-            // generate texture
-            unsigned int texture;
-            glGenTextures(1, &texture);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glTexImage2D(
-                GL_TEXTURE_2D,
-                0,
-                GL_RED,
-                face->glyph->bitmap.width,
-                face->glyph->bitmap.rows,
-                0,
-                GL_RED,
-                GL_UNSIGNED_BYTE,
-                face->glyph->bitmap.buffer
-            );
-            // set texture options
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            // now store character for later use
-            Character character = {
-                texture,
-                glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-                glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-                static_cast<unsigned int>(face->glyph->advance.x)
-            };
-            Characters.insert(std::pair<char, Character>(c, character));
+            int advance, leftSideBearing;
+            stbtt_GetCodepointHMetrics(&font, character, &advance, &leftSideBearing);
+            width += advance * scale;
         }
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
 
-    // destroy FreeType once we're finished
-    FT_Done_Face(face);
-    FT_Done_FreeType(ft);
+        int height = (ascent + (descent * -1)) * scale;
+
+        std::vector<unsigned char> pixels((size_t)(width * height), (unsigned char)0);
+
+        float xpos = 0.0f;
+        int characterIndex = 0;
+        while (fontBuffer[characterIndex]) {
+            int advance, lsb, x0, y0, x1, y1;
+            float x_shift = xpos - (float)floor(xpos);
+
+            stbtt_GetCodepointHMetrics(
+                &font, fontBuffer[characterIndex], &advance, &lsb);
+
+            stbtt_GetCodepointBitmapBoxSubpixel(
+                &font,
+                fontBuffer[characterIndex],
+                scale,
+                scale,
+                x_shift,
+                0,
+                &x0,
+                &y0,
+                &x1,
+                &y1);
+
+            auto stride = width * (baseline + y0) + (int)xpos + x0;
+            stbtt_MakeCodepointBitmapSubpixel(
+                &font,
+                &pixels.at(0) + stride,
+                x1 - x0,
+                y1 - y0,
+                width,
+                scale,
+                scale,
+                x_shift,
+                0,
+                fontBuffer[characterIndex]);
+
+            xpos += (advance * scale);
+
+            if (fontBuffer[characterIndex + 1]) {
+                int kernAdvance = stbtt_GetCodepointKernAdvance(
+                    &font, fontBuffer[characterIndex], fontBuffer[characterIndex + 1]);
+                xpos += scale * kernAdvance;
+            }
+
+            ++characterIndex;
+        }
+
+        // This step works fine, this means that the data in pixels is good
+        stbi_write_png("image.png", width, height, 1, pixels.data(), 0);
+    }
 
     // configure VAO/VBO for texture quads
     // -----------------------------------
@@ -180,9 +204,6 @@ int main()
         // ------
         glClearColor(0.8f, 0.3f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        RenderText(ourShader, "JOO :O \n Text", (SCR_WIDTH / 2) - 200, (SCR_HEIGHT / 2) - 50, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
-        RenderText(ourShader, "(C) gabriel.pouw.com", 540.0f, 570.0f, 0.5f, glm::vec3(0.3, 0.7f, 0.9f));
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

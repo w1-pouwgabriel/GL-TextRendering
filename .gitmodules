@@ -1,0 +1,3 @@
+[submodule "GL-TextRendering/include/stb"]
+	path = GL-TextRendering/include/stb
+	url = https://github.com/nothings/stb.git
